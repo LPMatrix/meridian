@@ -32,13 +32,8 @@ def _load_index_html() -> str:
 INDEX_HTML = _load_index_html()
 
 
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=0)
+    message: str
     history: list[dict[str, Any]] = Field(default_factory=list)
 
 
@@ -71,27 +66,17 @@ async def run_chat(request: ChatRequest) -> ChatResponse:
     return ChatResponse(reply=reply, history=new_history)
 
 
-def register_chat_routes(app: FastAPI, path: str) -> None:
-    """Mount the chat endpoint at `path` (e.g. `/api`, `/api/chat`, or `/` on Vercel)."""
-
-    async def chat_endpoint(body: ChatRequest) -> ChatResponse:
-        return await run_chat(body)
-
-    safe = path.replace("/", "_") or "_root"
-    chat_endpoint.__name__ = f"chat{safe}"
-    app.add_api_route(
-        path,
-        chat_endpoint,
-        methods=["POST"],
-        response_model=ChatResponse,
-    )
-
-
 def create_app() -> FastAPI:
     app = FastAPI(title="Meridian Support")
 
-    register_chat_routes(app, "/api/chat")
-    register_chat_routes(app, "/api")
+    @app.post("/api/chat", response_model=ChatResponse)
+    async def chat(body: ChatRequest) -> ChatResponse:
+        return await run_chat(body)
+
+    # /api is an alias kept for backward compatibility
+    @app.post("/api", response_model=ChatResponse)
+    async def chat_short(body: ChatRequest) -> ChatResponse:
+        return await run_chat(body)
 
     @app.get("/", response_class=HTMLResponse)
     async def serve_index() -> HTMLResponse:

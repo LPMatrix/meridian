@@ -16,8 +16,8 @@ from meridian_support.settings import Settings
 logger = logging.getLogger(__name__)
 
 
-def gradio_messages_to_prior_turns(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Normalize Gradio `type=\"messages\"` history to OpenAI-style user/assistant turns (no system)."""
+def chat_messages_to_prior_turns(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize UI chat history (user/assistant messages) to OpenAI-style turns (no system)."""
     turns: list[dict[str, Any]] = []
     for block in history:
         role = block.get("role")
@@ -58,7 +58,7 @@ class SupportAgent:
                 "to enable the assistant."
             )
 
-        prior = gradio_messages_to_prior_turns(history)
+        prior = chat_messages_to_prior_turns(history)
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
             *prior,

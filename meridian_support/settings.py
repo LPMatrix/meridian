@@ -34,8 +34,6 @@ class Settings(BaseSettings):
 
     request_timeout_seconds: float = Field(default=120.0, gt=0)
 
-    gradio_share: bool = Field(default=False)
-
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
 

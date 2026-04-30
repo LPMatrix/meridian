@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from meridian_support.agent import gradio_pairs_to_messages
+from meridian_support.agent import gradio_messages_to_prior_turns
 
 
-def test_gradio_history_to_messages() -> None:
-    history: list[list[str | None]] = [
-        ["Hi", "Hello!"],
-        ["Any monitors?", None],
+def test_gradio_messages_to_prior_turns() -> None:
+    history: list[dict[str, str]] = [
+        {"role": "user", "content": "Hi"},
+        {"role": "assistant", "content": "Hello!"},
+        {"role": "user", "content": "Any monitors?"},
     ]
-    # second turn assistant not filled yet — still should map user line
-    msgs = gradio_pairs_to_messages(history)
+    msgs = gradio_messages_to_prior_turns(history)
     assert msgs == [
         {"role": "user", "content": "Hi"},
         {"role": "assistant", "content": "Hello!"},

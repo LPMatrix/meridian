@@ -16,17 +16,24 @@ from meridian_support.settings import Settings
 logger = logging.getLogger(__name__)
 
 
-def gradio_pairs_to_messages(history: list[list[str | None]]) -> list[dict[str, Any]]:
-    """Convert Gradio Chatbot tuples to OpenAI-style message bodies (no system)."""
-    out: list[dict[str, Any]] = []
-    for turn in history:
-        user_text = turn[0] if len(turn) > 0 else None
-        assistant_text = turn[1] if len(turn) > 1 else None
-        if user_text:
-            out.append({"role": "user", "content": user_text})
-        if assistant_text:
-            out.append({"role": "assistant", "content": assistant_text})
-    return out
+def gradio_messages_to_prior_turns(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize Gradio `type=\"messages\"` history to OpenAI-style user/assistant turns (no system)."""
+    turns: list[dict[str, Any]] = []
+    for block in history:
+        role = block.get("role")
+        content = block.get("content")
+        if role not in ("user", "assistant"):
+            continue
+        text: str | None
+        if isinstance(content, str):
+            text = content
+        elif isinstance(content, (list, tuple)):
+            text = str(content)
+        else:
+            text = None
+        if text:
+            turns.append({"role": role, "content": text})
+    return turns
 
 
 class SupportAgent:
@@ -34,22 +41,24 @@ class SupportAgent:
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        client_kw: dict[str, Any] = {
-            "api_key": settings.openai_api_key or None,
-            "timeout": settings.request_timeout_seconds,
-        }
-        if settings.openai_base_url:
-            client_kw["base_url"] = settings.openai_base_url
-        self._client = AsyncOpenAI(**client_kw)
+        self._client: AsyncOpenAI | None = None
+        if settings.openai_api_key.strip():
+            client_kw: dict[str, Any] = {
+                "api_key": settings.openai_api_key,
+                "timeout": settings.request_timeout_seconds,
+            }
+            if settings.openai_base_url:
+                client_kw["base_url"] = settings.openai_base_url
+            self._client = AsyncOpenAI(**client_kw)
 
-    async def reply(self, message: str, history: list[list[str | None]]) -> str:
-        if not self._settings.openai_api_key.strip():
+    async def reply(self, message: str, history: list[dict[str, Any]]) -> str:
+        if self._client is None:
             return (
                 "Missing OPENAI_API_KEY. Set it in the environment or Hugging Face Space secrets "
                 "to enable the assistant."
             )
 
-        prior = gradio_pairs_to_messages(history)
+        prior = gradio_messages_to_prior_turns(history)
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
             *prior,
@@ -62,7 +71,7 @@ class SupportAgent:
             async with mcp_client_session(mcp_url) as session:
                 mcp_tools = await list_tools_paginated(session)
                 openai_tools = mcp_tools_to_openai(mcp_tools)
-                return await self._run_tool_loop(session, messages, openai_tools)
+                return await self._run_tool_loop(session, messages, openai_tools, self._client)
         except (OSError, TimeoutError, APIConnectionError) as exc:
             logger.exception("Connectivity failure")
             return (
@@ -78,12 +87,13 @@ class SupportAgent:
         session: ClientSession,
         messages: list[dict[str, Any]],
         openai_tools: list[dict[str, Any]],
+        client: AsyncOpenAI,
     ) -> str:
         rounds = 0
         while rounds < self._settings.max_tool_rounds:
             rounds += 1
             try:
-                completion = await self._client.chat.completions.create(
+                completion = await client.chat.completions.create(
                     model=self._settings.llm_model,
                     messages=messages,
                     tools=openai_tools,

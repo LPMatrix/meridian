@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -14,20 +14,22 @@ from meridian_support.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-ROOT = Path(__file__).resolve().parent.parent
+PKG_DIR = Path(__file__).resolve().parent
+ROOT = PKG_DIR.parent
+TEMPLATE_DIR = PKG_DIR / "templates"
+INDEX_HTML_PATH = TEMPLATE_DIR / "index.html"
 
 
-def resolve_public_dir() -> Path:
-    """Repo `public/` on disk; on Vercel the bundle root may differ from `__file__`."""
-    candidates = [
-        ROOT / "public",
-        Path.cwd() / "public",
-        Path("/var/task/public"),
-    ]
-    for p in candidates:
-        if p.is_dir() and (p / "index.html").is_file():
-            return p
-    return ROOT / "public"
+def _load_index_html() -> str:
+    """HTML must be in the function bundle; `public/` is excluded from it on Vercel."""
+    try:
+        return INDEX_HTML_PATH.read_text(encoding="utf-8")
+    except OSError:
+        logger.exception("Could not load %s", INDEX_HTML_PATH)
+        return "<!doctype html><meta charset=utf-8><title>Meridian</title><p>UI bundle missing.</p>"
+
+
+INDEX_HTML = _load_index_html()
 
 
 class ChatMessage(BaseModel):
@@ -91,21 +93,20 @@ def create_app() -> FastAPI:
     register_chat_routes(app, "/api/chat")
     register_chat_routes(app, "/api")
 
-    public = resolve_public_dir()
-    index_html = public / "index.html"
-    if index_html.is_file():
-        @app.get("/")
-        async def serve_index() -> FileResponse:
-            return FileResponse(index_html)
+    @app.get("/", response_class=HTMLResponse)
+    async def serve_index() -> HTMLResponse:
+        return HTMLResponse(INDEX_HTML)
 
-        css_dir = public / "css"
-        if css_dir.is_dir():
-            app.mount("/css", StaticFiles(directory=str(css_dir)), name="css")
-        js_dir = public / "js"
-        if js_dir.is_dir():
-            app.mount("/js", StaticFiles(directory=str(js_dir)), name="js")
-    else:
-        logger.warning("public/index.html missing — browser UI will 404 at /")
+    # Local-dev convenience: when `public/` is present (uvicorn), serve assets from there.
+    # On Vercel, `public/` is the CDN root — these mounts simply never register and the CDN
+    # responds to /css/* and /js/* directly.
+    public = ROOT / "public"
+    css_dir = public / "css"
+    js_dir = public / "js"
+    if css_dir.is_dir():
+        app.mount("/css", StaticFiles(directory=str(css_dir)), name="css")
+    if js_dir.is_dir():
+        app.mount("/js", StaticFiles(directory=str(js_dir)), name="js")
 
     return app
 

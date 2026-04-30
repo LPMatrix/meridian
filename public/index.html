@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meridian Electronics — Support</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <h1>Meridian Electronics</h1>
+            <p class="tagline">Customer support</p>
+          </div>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="intro card">
+          <p>
+            Ask about <strong>products</strong>, <strong>orders</strong>, or <strong>account verification</strong>.
+            The assistant uses Meridian’s live <strong>MCP ordering service</strong> — it only states facts
+            returned by tools.
+          </p>
+        </section>
+
+        <section class="chat card" aria-label="Conversation">
+          <div id="messages" class="messages" role="log" aria-live="polite"></div>
+          <div id="error" class="error" role="alert" hidden></div>
+          <form id="chat-form" class="composer">
+            <label class="sr-only" for="msg">Your message</label>
+            <div class="composer-bar">
+              <textarea
+                id="msg"
+                name="message"
+                rows="2"
+                placeholder="e.g. Search for 4K monitors, or verify me with my email and PIN"
+                autocomplete="off"
+              ></textarea>
+              <button type="submit" id="send" class="btn-primary">Send</button>
+            </div>
+          </form>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>Prototype · Meridian MCP + OpenAI tool-calling</span>
+      </footer>
+    </div>
+    <script src="/js/app.js" type="module"></script>
+  </body>
+</html>

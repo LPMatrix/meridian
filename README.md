@@ -1,28 +1,19 @@
----
-
-## title: Meridian Electronics — MCP Support Bot
-emoji: 🛒
-colorFrom: slate
-colorTo: blue
-sdk: gradio
-app_file: app.py
-pinned: false
-
 # Meridian Electronics · Customer Support
 
-Gradio chat UI that connects to Meridian’s **Streamable HTTP MCP** ordering service and drives **OpenAI tool-calling** (default `gpt-4o-mini`) so the model only asserts facts returned by backend tools (`list_products`, `search_products`, `get_product`, customer auth, orders, `create_order`, etc.).
+Web chat (static **HTML/CSS/JS** in `public/`) talks to a **FastAPI** backend (`POST /api/chat`) that drives **OpenAI tool-calling** (default `gpt-4o-mini`) and Meridian’s **Streamable HTTP MCP** ordering service, so the model only asserts facts returned by tools (`list_products`, `search_products`, `get_product`, customer auth, orders, `create_order`, etc.).
 
 ## Architecture
 
-
 | Layer                              | Responsibility                                                                                                          |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `meridian_support/mcp_bridge.py`   | MCP session lifecycle (`initialize` before anything else), paginated `list_tools`, redacted logging for sensitive tools |
-| `meridian_support/openai_tools.py` | Maps MCP `inputSchema` → OpenAI function parameters (no hardcoded shapes)                                               |
-| `meridian_support/results.py`      | MCP `CallToolResult` → compact JSON text for LLM (`tool_result_to_llm_text`)                                            |
-| `meridian_support/agent.py`        | Tool loop: completions ↔ MCP `invoke_tool`; connectivity errors surfaced to users                                       |
-| `app.py`                           | Gradio UI only (`type="messages"`), wires secrets from the environment                                                  |
-
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `meridian_support/mcp_bridge.py`   | MCP session lifecycle (`initialize` before anything else), paginated `list_tools`, redacted logging for sensitive tools   |
+| `meridian_support/openai_tools.py` | Maps MCP `inputSchema` → OpenAI function parameters (no hardcoded shapes)                                                |
+| `meridian_support/results.py`      | MCP `CallToolResult` → compact JSON text for LLM (`tool_result_to_llm_text`)                                              |
+| `meridian_support/agent.py`        | Tool loop: completions ↔ MCP `invoke_tool`; connectivity errors surfaced to users                                        |
+| `meridian_api/server.py`           | FastAPI: `POST /api/chat`, local static files from `public/`                                                             |
+| `public/`                          | `index.html`, `css/style.css`, `js/app.js` — deployable as static assets on Vercel                                       |
+| `api/chat.py`                      | Same FastAPI chat routes at `POST /` for **Vercel Python Serverless** (`/api/chat`)                                       |
+| `app.py`                           | Local entry: `uvicorn` on `PORT` (default 7860)                                                                         |
 
 ## Local run
 
@@ -33,17 +24,24 @@ cp .env.example .env   # add OPENAI_API_KEY
 python app.py
 ```
 
-Open [http://127.0.0.1:7860](http://127.0.0.1:7860) — set `PORT` if needed.
+Open [http://127.0.0.1:7860](http://127.0.0.1:7860) — static UI and API share one origin.
+
+## Deploy on Vercel
+
+1. Connect this repo to Vercel.
+2. **Environment variables** (Project → Settings → Environment Variables): same as below (`OPENAI_API_KEY`, optional `MCP_SERVER_URL`, `LLM_MODEL`, etc.).
+3. Vercel will:
+   - Serve files in **`public/`** at `/` (CSS/JS paths like `/css/style.css` work as-is).
+   - Run **`api/chat.py`** as a Python function at **`POST /api/chat`** (see `vercel.json` for `maxDuration`).
+4. Upgrade the CLI if prompted (`npm i -g vercel@latest`).
+
+If the UI loads but chat fails, confirm secrets exist for **Production** (and Preview if you test previews).
 
 ## Hugging Face Spaces
 
-1. New Space → **Gradio**, clone/push this repo.
-2. **Settings → Secrets**: `OPENAI_API_KEY` (required). Optionally `MCP_SERVER_URL`, `LLM_MODEL`.
-3. Default MCP URL matches the assessment (`order-mcp-…run.app/mcp`).
-4. Capture screenshots into `screenshots/` for your submission packet.
+Use a **Docker** Space or a **custom command** that runs `uvicorn meridian_api.server:app --host 0.0.0.0 --port 7860` with `OPENAI_API_KEY` in Space secrets (Gradio is no longer required).
 
 ## Configuration
-
 
 | Variable          | Purpose                          |
 | ----------------- | -------------------------------- |
@@ -52,7 +50,6 @@ Open [http://127.0.0.1:7860](http://127.0.0.1:7860) — set `PORT` if needed.
 | `LLM_MODEL`       | e.g. `gpt-4o-mini`               |
 | `OPENAI_BASE_URL` | Optional (Azure/proxy)           |
 | `MAX_TOOL_ROUNDS` | Cap tool iterations (cost guard) |
-
 
 ## Tests
 
@@ -65,5 +62,4 @@ pytest
 - Single-tenant demo: no org-level RBAC, no human handoff queue.
 - LLM may still mis-summarize tool text — mitigated by grounding policy in `prompts.py`, not eliminated.
 - One MCP session per user turn (fresh `initialize` each time): simple and correct, higher latency than a pooled session.
-- Gradio UI has **no end-user login**; “customer” identity is whatever the user types and what MCP tools return (suitable for a demo, not full production).
-
+- No end-user login; “customer” identity is whatever the user types and what MCP tools return (suitable for a demo, not full production).

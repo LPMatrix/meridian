@@ -1,5 +1,5 @@
 /**
- * Chat UI — POST JSON to /api (Vercel: api/index.py) or same-origin uvicorn.
+ * Chat UI — POST JSON to /api (Vercel: src/index.py FastAPI app) or uvicorn.
  */
 
 const API_URL = "/api";

@@ -11,8 +11,8 @@ Web chat (static **HTML/CSS/JS** in `public/`) talks to a **FastAPI** backend (`
 | `meridian_support/results.py`      | MCP `CallToolResult` → compact JSON text for LLM (`tool_result_to_llm_text`)                                              |
 | `meridian_support/agent.py`        | Tool loop: completions ↔ MCP `invoke_tool`; connectivity errors surfaced to users                                        |
 | `meridian_api/server.py`           | FastAPI: `POST /api` (and `/api/chat`), local static files from `public/`                                                 |
-| `public/`                          | `index.html`, `css/style.css`, `js/app.js` — deployable as static assets on Vercel                                       |
-| `api/index.py`                     | **Vercel** Python entry (`index.py` is required for discovery); exposes `app` → `POST /api`                              |
+| `public/`                          | `index.html`, `css/style.css`, `js/app.js` — CDN on Vercel                                                               |
+| `src/index.py`                     | **Vercel** FastAPI entry — re-exports `app` (see [FastAPI on Vercel](https://vercel.com/docs/frameworks/backend/fastapi)) |
 | `app.py`                           | Local entry: `uvicorn` on `PORT` (default 7860)                                                                         |
 
 ## Local run
@@ -31,9 +31,12 @@ Open [http://127.0.0.1:7860](http://127.0.0.1:7860) — static UI and API share 
 1. Connect this repo to Vercel.
 2. **Environment variables** (Project → Settings → Environment Variables): same as below (`OPENAI_API_KEY`, optional `MCP_SERVER_URL`, `LLM_MODEL`, etc.).
 3. Vercel will:
-   - Serve files in **`public/`** at `/` (CSS/JS paths like `/css/style.css` work as-is).
-   - Run **`api/index.py`** as the Python function at **`POST /api`** (see `vercel.json` for `maxDuration`). Vercel only treats certain names (e.g. `index.py`) as function roots; arbitrary names like `chat.py` may not match `functions` patterns during build.
-4. Upgrade the CLI if prompted (`npm i -g vercel@latest`).
+   - Serve **`public/`** from the edge CDN (`/`, `/css/…`, `/js/…`).
+   - Build the FastAPI app from **`src/index.py`** (single Fluid compute function). Chat: **`POST /api`** (same as local).
+4. In the project dashboard, increase **Function max duration** if MCP/LLM runs time out (defaults are lower than local `uvicorn`).
+5. Upgrade the CLI if prompted (`npm i -g vercel@latest`).
+
+Avoid a root **`api/*.py`** layout for this repo: Vercel’s FastAPI preset expects entries like **`src/index.py`** or **`app/main.py`**, and `vercel.json` → `functions` patterns only match files Vercel actually emits as serverless functions — which often excludes ad‑hoc `api/chat.py` style files when the project is detected as FastAPI + static.
 
 If the UI loads but chat fails, confirm secrets exist for **Production** (and Preview if you test previews).
 

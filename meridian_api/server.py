@@ -87,13 +87,4 @@ def create_app() -> FastAPI:
     return app
 
 
-def create_vercel_chat_app() -> FastAPI:
-    """Minimal app for Vercel `api/index.py` — ASGI path varies by platform."""
-    app = FastAPI(title="Meridian Support API")
-    register_chat_routes(app, "/")
-    register_chat_routes(app, "/api")
-    register_chat_routes(app, "/api/chat")
-    return app
-
-
 app = create_app()

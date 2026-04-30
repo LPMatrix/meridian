@@ -1,6 +1,6 @@
 # Meridian Electronics · Customer Support
 
-Web chat (static **HTML/CSS/JS** in `public/`) talks to a **FastAPI** backend (`POST /api/chat`) that drives **OpenAI tool-calling** (default `gpt-4o-mini`) and Meridian’s **Streamable HTTP MCP** ordering service, so the model only asserts facts returned by tools (`list_products`, `search_products`, `get_product`, customer auth, orders, `create_order`, etc.).
+Web chat (static **HTML/CSS/JS** in `public/`) talks to a **FastAPI** backend (`POST /api`, alias `POST /api/chat`) that drives **OpenAI tool-calling** (default `gpt-4o-mini`) and Meridian’s **Streamable HTTP MCP** ordering service, so the model only asserts facts returned by tools (`list_products`, `search_products`, `get_product`, customer auth, orders, `create_order`, etc.).
 
 ## Architecture
 
@@ -10,9 +10,9 @@ Web chat (static **HTML/CSS/JS** in `public/`) talks to a **FastAPI** backend (`
 | `meridian_support/openai_tools.py` | Maps MCP `inputSchema` → OpenAI function parameters (no hardcoded shapes)                                                |
 | `meridian_support/results.py`      | MCP `CallToolResult` → compact JSON text for LLM (`tool_result_to_llm_text`)                                              |
 | `meridian_support/agent.py`        | Tool loop: completions ↔ MCP `invoke_tool`; connectivity errors surfaced to users                                        |
-| `meridian_api/server.py`           | FastAPI: `POST /api/chat`, local static files from `public/`                                                             |
+| `meridian_api/server.py`           | FastAPI: `POST /api` (and `/api/chat`), local static files from `public/`                                                 |
 | `public/`                          | `index.html`, `css/style.css`, `js/app.js` — deployable as static assets on Vercel                                       |
-| `api/chat.py`                      | Same FastAPI chat routes at `POST /` for **Vercel Python Serverless** (`/api/chat`)                                       |
+| `api/index.py`                     | **Vercel** Python entry (`index.py` is required for discovery); exposes `app` → `POST /api`                              |
 | `app.py`                           | Local entry: `uvicorn` on `PORT` (default 7860)                                                                         |
 
 ## Local run
@@ -32,7 +32,7 @@ Open [http://127.0.0.1:7860](http://127.0.0.1:7860) — static UI and API share 
 2. **Environment variables** (Project → Settings → Environment Variables): same as below (`OPENAI_API_KEY`, optional `MCP_SERVER_URL`, `LLM_MODEL`, etc.).
 3. Vercel will:
    - Serve files in **`public/`** at `/` (CSS/JS paths like `/css/style.css` work as-is).
-   - Run **`api/chat.py`** as a Python function at **`POST /api/chat`** (see `vercel.json` for `maxDuration`).
+   - Run **`api/index.py`** as the Python function at **`POST /api`** (see `vercel.json` for `maxDuration`). Vercel only treats certain names (e.g. `index.py`) as function roots; arbitrary names like `chat.py` may not match `functions` patterns during build.
 4. Upgrade the CLI if prompted (`npm i -g vercel@latest`).
 
 If the UI loads but chat fails, confirm secrets exist for **Production** (and Preview if you test previews).

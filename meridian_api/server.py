@@ -57,7 +57,7 @@ async def run_chat(request: ChatRequest) -> ChatResponse:
 
 
 def register_chat_routes(app: FastAPI, path: str) -> None:
-    """Mount the chat endpoint at `path` (e.g. `/api/chat` or `/` for Vercel `api/chat.py`)."""
+    """Mount the chat endpoint at `path` (e.g. `/api`, `/api/chat`, or `/` on Vercel)."""
 
     async def chat_endpoint(body: ChatRequest) -> ChatResponse:
         return await run_chat(body)
@@ -76,6 +76,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Meridian Support")
 
     register_chat_routes(app, "/api/chat")
+    register_chat_routes(app, "/api")
 
     if PUBLIC_DIR.is_dir():
         app.mount(
@@ -87,9 +88,10 @@ def create_app() -> FastAPI:
 
 
 def create_vercel_chat_app() -> FastAPI:
-    """Minimal app for `api/chat.py` on Vercel (path may be `/` or `/api/chat` per runtime)."""
+    """Minimal app for Vercel `api/index.py` — ASGI path varies by platform."""
     app = FastAPI(title="Meridian Support API")
     register_chat_routes(app, "/")
+    register_chat_routes(app, "/api")
     register_chat_routes(app, "/api/chat")
     return app
 

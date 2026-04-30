@@ -1,4 +1,4 @@
-"""Vercel Python Serverless Function → POST https://<deployment>/api/chat"""
+"""Vercel Python serverless entry — POST https://<deployment>/api"""
 
 from meridian_api.server import create_vercel_chat_app
 

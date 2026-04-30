@@ -1,8 +1,8 @@
 /**
- * Chat UI — POST JSON to /api/chat (same origin on Vercel or uvicorn).
+ * Chat UI — POST JSON to /api (Vercel: api/index.py) or same-origin uvicorn.
  */
 
-const API_URL = "/api/chat";
+const API_URL = "/api";
 
 const messagesEl = document.getElementById("messages");
 const formEl = document.getElementById("chat-form");
